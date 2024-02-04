@@ -1,0 +1,40 @@
+using System.Text.RegularExpressions;
+
+var lines = File.ReadAllLines("input.txt");
+var numbersRegex = new Regex("[0-9]+");
+var symbolsRegex = new Regex("[^0-9.]");
+
+var symbolsPositions = new List<(int line, int pos)>();
+
+bool isValueAdjacent(int lineIndex, int beginIndex, int endIndex)
+{
+    return symbolsPositions
+        .Where(symbol => symbol.line - lineIndex <= 1 && symbol.line - lineIndex >= -1)
+        .Any(symbol => beginIndex <= symbol.pos + 1 && endIndex >= symbol.pos - 1);
+}
+
+for (var index = 0; index < lines.Length; index++)
+{
+    var line = lines[index];
+    foreach (Match match in symbolsRegex.Matches(line))
+    {
+        symbolsPositions.Add((line: index, pos:match.Index));
+    }
+}
+
+
+var sum = 0;
+
+for (var index = 0; index < lines.Length; index++)
+{
+    var line = lines[index];
+    foreach (Match match in numbersRegex.Matches(line))
+    {
+        if (isValueAdjacent(index, match.Index, match.Index + match.Length - 1))
+        {
+            sum += int.Parse(match.Value);
+        }
+    }
+}
+
+Console.WriteLine(sum);

@@ -1,17 +1,17 @@
-﻿
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 var lines = File.ReadAllLines("input.txt");
 var numbersRegex = new Regex("[0-9]+");
 var symbolsRegex = new Regex("[^0-9.]");
 
-var symbolsPositions = new List<(int line, int pos)>();
+var symbols = new List<Symbol>();
 
-bool isValueAdjacent(int lineIndex, int beginIndex, int endIndex)
+List<Symbol> AdjacentSymbolsForValue(int lineIndex, int beginIndex, int endIndex)
 {
-    return symbolsPositions
+    return symbols
         .Where(symbol => symbol.line - lineIndex <= 1 && symbol.line - lineIndex >= -1)
-        .Any(symbol => beginIndex <= symbol.pos + 1 && endIndex >= symbol.pos - 1);
+        .Where(symbol => beginIndex <= symbol.pos + 1 && endIndex >= symbol.pos - 1)
+        .ToList();
 }
 
 for (var index = 0; index < lines.Length; index++)
@@ -19,23 +19,26 @@ for (var index = 0; index < lines.Length; index++)
     var line = lines[index];
     foreach (Match match in symbolsRegex.Matches(line))
     {
-        symbolsPositions.Add((line: index, pos:match.Index));
+        symbols.Add(new Symbol(index, match.Index, match.Value[0], []));
     }
 }
-
-
-var sum = 0;
 
 for (var index = 0; index < lines.Length; index++)
 {
     var line = lines[index];
     foreach (Match match in numbersRegex.Matches(line))
     {
-        if (isValueAdjacent(index, match.Index, match.Index + match.Length - 1))
+        foreach (var symbol in AdjacentSymbolsForValue(index, match.Index, match.Index + match.Length - 1))
         {
-            sum += int.Parse(match.Value);
+            symbol.adjacents.Add(int.Parse(match.Value));
         }
     }
 }
 
+var sum = symbols
+    .Where(symbol => symbol is { symbol: '*', adjacents.Count: 2 })
+    .Sum(symbol => symbol.adjacents[0] * symbol.adjacents[1]);
+
 Console.WriteLine(sum);
+
+record Symbol(int line, int pos, char symbol, List<int> adjacents);
