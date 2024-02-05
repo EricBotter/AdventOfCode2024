@@ -1,0 +1,16 @@
+using System.Text.RegularExpressions;
+
+var numberRegex = new Regex("[0-9]+");
+var lineRegex = new Regex($"^Card *{numberRegex}: (?<winning>[0-9 ]*)\\|(?<our>[0-9 ]*)");
+
+var lines = File.ReadAllLines("input");
+
+var sum = lines.Select(line => lineRegex.Match(line))
+    .Select(match => (winning: match.Groups["winning"].Value, our: match.Groups["our"].Value))
+    .Select(tuple => (winning: numberRegex.Matches(tuple.winning).Select(match => match.Value).Select(int.Parse),
+        our: numberRegex.Matches(tuple.our).Select(match => match.Value).Select(int.Parse)))
+    .Select(tuple => tuple.winning.Intersect(tuple.our).ToList())
+    .Select(winningNumbers => winningNumbers.Count > 0 ? 1 << (winningNumbers.Count - 1) : 0)
+    .Sum();
+
+Console.WriteLine(sum);
