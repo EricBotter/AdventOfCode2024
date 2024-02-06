@@ -6,7 +6,11 @@ var parseLineOfNumbers = (string line) =>
 
 var groups = File.ReadAllText("input").Split("\n\n");
 
-var seeds = parseLineOfNumbers(groups[0]);
+var seeds = parseLineOfNumbers(groups[0])
+    .Chunk(2)
+    .Select(pair => new SeedRange(pair[0], pair[1]))
+    .ToList();
+
 var mapGroups = groups
     .Skip(1)
     .Select(input => input.Trim().Split("\n").Skip(1))
@@ -17,27 +21,61 @@ var mapGroups = groups
 
 foreach (var mapGroup in mapGroups)
 {
-    for (var i = 0; i < seeds.Count; i++)
+    var mappedSeeds = new List<SeedRange>();
+
+    var seedsBeingProcessed = new List<SeedRange>(seeds);
+    foreach (var map in mapGroup)
     {
-        var seed = seeds[i];
-        var applicableMap = mapGroup.Where(map => map.Match(seed)).ToList();
-        if (applicableMap.Count > 0)
+        var newUnchangedSeeds = new List<SeedRange>();
+        foreach (var seed in seedsBeingProcessed)
         {
-            seeds[i] = applicableMap.First().Map(seed);
+            var (unchanged, changed) = map.Map(seed);
+            mappedSeeds.AddRange(changed);
+            newUnchangedSeeds.AddRange(unchanged);
         }
-        else
-        {
-            seeds[i] = seed;
-        }
+        seedsBeingProcessed = newUnchangedSeeds;
     }
+
+    seeds = mappedSeeds.Concat(seedsBeingProcessed).Where(seed => seed.Length > 0).ToList();
 }
 
-Console.WriteLine(seeds.Min());
+Console.WriteLine(seeds.Select(seed => seed.Start).Min());
 
 
 record NumberMap(long DestStart, long SourceStart, long Length)
 {
-    public bool Match(long input) => input >= SourceStart && input < SourceStart + Length;
+    public (List<SeedRange> unchanged, List<SeedRange> changed) Map(SeedRange seedRange)
+    {
+        if (seedRange.Start + seedRange.Length <= SourceStart || seedRange.Start >= SourceStart + Length)
+        {
+            return ([seedRange], []);
+        }
 
-    public long Map(long input) => input + (DestStart - SourceStart);
+        if (seedRange.Start <= SourceStart)
+        {
+            if (seedRange.Start + seedRange.Length <= SourceStart + Length)
+            {
+                return ([new SeedRange(seedRange.Start, SourceStart - seedRange.Start)],
+                    [new SeedRange(DestStart, seedRange.Length - (SourceStart - seedRange.Start))]);
+            }
+
+            return (
+                [
+                    new SeedRange(seedRange.Start, SourceStart - seedRange.Start),
+                    new SeedRange(SourceStart + Length, seedRange.Length - Length - (SourceStart - seedRange.Start))
+                ],
+                [new SeedRange(DestStart, Length)]);
+        }
+
+        if (seedRange.Start + seedRange.Length <= SourceStart + Length)
+        {
+            return ([], [new SeedRange(DestStart + (seedRange.Start - SourceStart), seedRange.Length)]);
+        }
+
+        return (
+            [new SeedRange(SourceStart + Length, seedRange.Length - (seedRange.Start - SourceStart))],
+            [new SeedRange(DestStart + (seedRange.Start - SourceStart), seedRange.Start - SourceStart)]);
+    }
 }
+
+record SeedRange(long Start, long Length);
