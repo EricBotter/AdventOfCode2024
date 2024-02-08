@@ -7,12 +7,14 @@ var numberRegex = new Regex("[0-9]+");
 var parseLineOfNumbers = (string line) =>
     numberRegex.Matches(line).Select(match => match.Value).Select(long.Parse).ToList();
 
-var racesToGroup = lines.Select(line => line.Replace(" ", "")).Select(parseLineOfNumbers).ToList();
+var racesToGroup = lines .Select(parseLineOfNumbers) .ToList();
 var races = racesToGroup[0].Zip(racesToGroup[1]).Select(zip => new Race(zip.First, zip.Second)).ToList();
 
-var ways = 0;
+var output = 1L;
+
 foreach (var race in races)
 {
+    var ways = 0;
     for (var i = 0; i < race.Time; i++)
     {
         var distance = i * (race.Time - i);
@@ -21,8 +23,10 @@ foreach (var race in races)
             ways++;
         }
     }
+
+    output *= ways;
 }
 
-Console.WriteLine(ways);
+Console.WriteLine(output);
 
 record Race(long Time, long RecordDistance);
