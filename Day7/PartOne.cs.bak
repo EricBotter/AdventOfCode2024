@@ -36,8 +36,8 @@ class Game : IComparable<Game>
 
         for (var i = 0; i < 5; i++)
         {
-            var i1 = "AKQT98765432J".IndexOf(Hand[i]);
-            var i2 = "AKQT98765432J".IndexOf(other.Hand[i]);
+            var i1 = "AKQJT98765432".IndexOf(Hand[i]);
+            var i2 = "AKQJT98765432".IndexOf(other.Hand[i]);
             if (i1 != i2)
                 return i2 - i1;
         }
@@ -48,23 +48,13 @@ class Game : IComparable<Game>
     private string HandComparisonString()
     {
         var list = Enumerable.Repeat(0, 13).ToList();
-        var jCount = 0;
         foreach (var c in Hand)
         {
-            if (c == 'J')
-            {
-                jCount++;
-                continue;
-            }
-            var index = "AKQT98765432".IndexOf(c);
+            int index = "AKQJT98765432".IndexOf(c);
             list[index]++;
         }
-        
         list.Sort();
         list.Reverse();
-        
-        list[0] += jCount;
-        
         return string.Join("", list.Where(x => x > 0));
     }
 }
