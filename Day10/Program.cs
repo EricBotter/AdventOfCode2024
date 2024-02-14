@@ -1,8 +1,7 @@
-﻿
-var lines = File.ReadAllLines("input");
+﻿var lines = File.ReadAllLines("input");
 
 var map = new char[lines[0].Length, lines.Length];
-var distanceMap = new int[map.GetLength(0), map.GetLength(1)];
+var loopMap = new int[map.GetLength(0), map.GetLength(1)];
 
 var startingPoint = new Point(0, 0);
 
@@ -11,21 +10,34 @@ for (var i = 0; i < lines.Length; i++)
     for (var j = 0; j < lines[i].Length; j++)
     {
         map[j, i] = lines[i][j];
-        distanceMap[j, i] = -1;
+        loopMap[j, i] = 0;
         if (map[j, i] == 'S')
         {
             startingPoint = new Point(j, i);
-            distanceMap[startingPoint.X, startingPoint.Y] = 0;
+            loopMap[j, i] = 1;
         }
     }
 }
 
 var queue = new Queue<Point>();
+var processed = new List<Point>();
 queue.Enqueue(startingPoint);
 
 while (queue.TryDequeue(out var currentPoint))
 {
-    foreach (var dir in new List<Direction> { Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT })
+    var directionsToCheck = map.Get(currentPoint) switch
+    {
+        'S' => new List<Direction> { Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT },
+        '|' => new List<Direction> { Direction.UP, Direction.DOWN},
+        '-' => new List<Direction> { Direction.RIGHT, Direction.LEFT },
+        'L' => new List<Direction> { Direction.UP, Direction.RIGHT },
+        'J' => new List<Direction> { Direction.UP, Direction.LEFT },
+        '7' => new List<Direction> { Direction.DOWN, Direction.LEFT },
+        'F' => new List<Direction> {Direction.RIGHT, Direction.DOWN },
+        _ => throw new ArgumentOutOfRangeException()
+    };
+    
+    foreach (var dir in directionsToCheck)
     {
         var newPoint = dir switch
         {
@@ -36,15 +48,119 @@ while (queue.TryDequeue(out var currentPoint))
             _ => throw new ArgumentOutOfRangeException()
         };
 
-        if (IsConnected(dir, map.Get(newPoint)) && distanceMap.Get(newPoint)!.Value == -1)
+        if (IsConnected(dir, map.Get(newPoint)) && loopMap.Get(newPoint)!.Value == 0)
         {
             queue.Enqueue(newPoint);
-            distanceMap.Set(newPoint, distanceMap.Get(currentPoint)!.Value + 1);
+            if (processed.Contains(currentPoint) && currentPoint != startingPoint)
+                throw new Exception();
+            processed.Add(currentPoint);
+            loopMap.Set(newPoint, 1);
         }
     }
 }
 
-Console.WriteLine(distanceMap.Cast<int>().Max());
+for (var i = 0; i < map.GetLength(1); i++)
+{
+    for (var j = 0; j < map.GetLength(0); j++)
+    {
+        if (loopMap[j, i] == 0)
+            map[j, i] = '.';
+    }
+}
+
+var dirs = new List<Direction> { Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT };
+var connections = new[] { false, false, false, false };
+for (var i = 0; i < dirs.Count; i++)
+{
+    var dir = dirs[i];
+    var newPoint = dir switch
+    {
+        Direction.UP => startingPoint with { Y = startingPoint.Y - 1 },
+        Direction.RIGHT => startingPoint with { X = startingPoint.X + 1 },
+        Direction.DOWN => startingPoint with { Y = startingPoint.Y + 1 },
+        Direction.LEFT => startingPoint with { X = startingPoint.X - 1 },
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+    connections[i] = IsConnected(dir, map.Get(newPoint));
+}
+
+map.Set(startingPoint, (connections[0], connections[1], connections[2], connections[3]) switch
+{
+    (true, false, true, false) => '|',
+    (false, true, false, true) => '-',
+    (true, true, false, false) => 'L',
+    (true, false, false, true) => 'J',
+    (false, false, true, true) => '7',
+    (false, true, true, false) => 'F',
+    _ => throw new ArgumentOutOfRangeException()
+});
+
+PrintMap(map);
+
+var output = 0;
+for (var i = 0; i < map.GetLength(1); i++)
+{
+    var inLoop = LoopBuildingState.OutOfLoop;
+    for (var j = 0; j < map.GetLength(0); j++)
+    {
+        switch (map[j, i], inLoop)
+        {
+            case ('|', LoopBuildingState.OutOfLoop):
+                inLoop = LoopBuildingState.InLoop;
+                break;
+            case ('|', LoopBuildingState.InLoop):
+                inLoop = LoopBuildingState.OutOfLoop;
+                break;
+            
+            case ('F', LoopBuildingState.OutOfLoop):
+                inLoop = LoopBuildingState.LoopBelow;
+                break;
+            case ('7', LoopBuildingState.LoopBelow):
+                inLoop = LoopBuildingState.OutOfLoop;
+                break;
+            case ('J', LoopBuildingState.LoopBelow):
+                inLoop = LoopBuildingState.InLoop;
+                break;
+            
+            case ('L', LoopBuildingState.OutOfLoop):
+                inLoop = LoopBuildingState.LoopAbove;
+                break;
+            case ('7', LoopBuildingState.LoopAbove):
+                inLoop = LoopBuildingState.InLoop;
+                break;
+            case ('J', LoopBuildingState.LoopAbove):
+                inLoop = LoopBuildingState.OutOfLoop;
+                break;
+            
+            case ('F', LoopBuildingState.InLoop):
+                inLoop = LoopBuildingState.LoopAbove;
+                break;
+            case ('L', LoopBuildingState.InLoop):
+                inLoop = LoopBuildingState.LoopBelow;
+                break;
+
+            case ('-', LoopBuildingState.LoopAbove):
+            case ('-', LoopBuildingState.LoopBelow):
+                break;
+
+            case ('.', LoopBuildingState.InLoop):
+                output += 1;
+                map[j, i] = 'X';
+                break;
+            case ('.', LoopBuildingState.OutOfLoop):
+                break;
+
+            default:
+                map[j, i] = '!';
+                break;
+        }
+    }
+}
+
+PrintMap(map);
+
+Console.WriteLine(output);
 
 bool IsConnected(Direction direction, char? destMaybe)
 {
@@ -59,9 +175,34 @@ bool IsConnected(Direction direction, char? destMaybe)
     };
 }
 
+void PrintMap(char[,] chars)
+{
+    for (var i = 0; i < chars.GetLength(1); i++)
+    {
+        for (var j = 0; j < chars.GetLength(0); j++)
+        {
+            Console.Write(chars[j, i] switch
+            {
+                '|' => '\u2503',
+                '-' => '\u2501',
+                'L' => '\u2517',
+                'J' => '\u251b',
+                '7' => '\u2513',
+                'F' => '\u250f',
+                'X' => 'X',
+                _ => '.'
+            });
+        }
+
+        Console.WriteLine();
+    }
+
+    Console.WriteLine();
+}
+
 static class Exts
 {
-    public static T? Get<T>(this T[,] source, Point location) where T: struct
+    public static T? Get<T>(this T[,] source, Point location) where T : struct
     {
         try
         {
@@ -72,8 +213,8 @@ static class Exts
             return null;
         }
     }
-    
-    public static void Set<T>(this T[,] source, Point location, T value) where T: struct
+
+    public static void Set<T>(this T[,] source, Point location, T value) where T : struct
     {
         try
         {
@@ -94,3 +235,11 @@ enum Direction
 }
 
 record Point(int X, int Y);
+
+enum LoopBuildingState
+{
+    InLoop,
+    OutOfLoop,
+    LoopAbove,
+    LoopBelow,
+}
