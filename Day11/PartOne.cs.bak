@@ -16,15 +16,14 @@ for (var i = 0; i < lines.Length; i++)
 var emptyRows = lines.Select((line, i) => (line, i)).Where(tuple => tuple.line.All(c => c == '.')).Select(tuple => tuple.i).ToList();
 var emptyCols = Enumerable.Range(0, lines[0].Length).Where(i => lines.All(line => line[i] == '.')).ToList();
 
-var sum = 0L;
+var sum = 0;
 foreach (var (a, b) in GalaxyCombinations(galaxies))
 {
     var xInterval = new Interval(a.X, b.X);
     var yInterval = new Interval(a.Y, b.Y);
 
-    sum += xInterval.Length + yInterval.Length +
-           emptyRows.Count(row => yInterval.IsContained(row)) * 999_999L +
-           emptyCols.Count(col => xInterval.IsContained(col)) * 999_999L;
+    sum += xInterval.Length + yInterval.Length + emptyRows.Count(row => yInterval.IsContained(row)) +
+           emptyCols.Count(col => xInterval.IsContained(col));
 }
 
 Console.WriteLine(sum);
