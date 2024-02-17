@@ -1,59 +1,97 @@
-﻿
-var lines = File.ReadAllLines("input");
+﻿var lines = File.ReadAllLines("input");
 
-var map = new char[lines[0].Length, lines.Length + 1];
+var sizeX = lines[0].Length;
+var sizeY = lines.Length;
 
-for (int i = 0; i < lines.Length; i++)
+var map = new char[sizeX, sizeY];
+
+for (int i = 0; i < sizeY; i++)
 {
-    map[i, 0] = '#';
-}
-
-for (int i = 0; i < lines.Length; i++)
-{
-    for (int j = 0; j < lines[0].Length; j++)
+    for (int j = 0; j < sizeX; j++)
     {
-        map[j, i + 1] = lines[i][j];
+        map[j, i] = lines[i][j];
     }
 }
 
-var rocks = new List<FixedRock>();
-for (int x = 0; x < lines[0].Length; x++)
+var northSegments = new List<Segment>();
+for (var x = 0; x < sizeX; x++)
 {
-    for (int y = 0; y < lines.Length + 1; y++)
+    var segmentEnd = 0;
+    for (var y = 0; y < sizeY; y++)
     {
         if (map[x, y] == '#')
         {
-            var pos = y + 1;
-            var count = 0;
-            while (pos <= lines.Length && map[x, pos] != '#')
-            {
-                if (map[x, pos] == 'O')
-                {
-                    count++;
-                }
+            if (segmentEnd != y) 
+                northSegments.Add(new Segment(x, y - 1, y - segmentEnd, Direction.North));
 
-                pos++;
-            }
-            rocks.Add(new FixedRock(x, lines.Length + 1 - y, count));
+            segmentEnd = y + 1;
+        }
+    }
+
+    if (segmentEnd != sizeY)
+        northSegments.Add(new Segment(x, sizeY - 1, sizeY - segmentEnd, Direction.North));
+}
+
+var balls = new List<Ball>();
+for (var x = 0; x < sizeX; x++)
+{
+    for (var y = 0; y < sizeY; y++)
+    {
+        if (map[x, y] == 'O')
+        {
+            balls.Add(new Ball(x, y));
         }
     }
 }
 
-Console.WriteLine(rocks.Select(rock => rock.Load).Sum());
-
-record FixedRock(int X, int Y, int Count)
+var newBalls = new List<Ball>();
+foreach (var segment in northSegments)
 {
-    public int Load
+    var containedBalls = balls.Where(segment.Contains);
+    var count = 0;
+    foreach (var ball in containedBalls)
     {
-        get
-        {
-            var load = 0;
-            for (var i = 0; i < Count; i++)
-            {
-                load += Y - i - 1;
-            }
-
-            return load;
-        }
+        var newX = ball.X;
+        var newY = segment.Y - segment.Length + 1 + count;
+        newBalls.Add(new Ball(newX, newY));
+        count++;
     }
+}
+
+Console.WriteLine(newBalls.Select(ball => ball.Load(sizeY)).Sum());
+
+enum Direction
+{
+    North,
+    West,
+    South,
+    East
+}
+
+record Ball(int X, int Y)
+{
+    public int Load(int maxY) => maxY - Y;
 };
+
+record Segment(int X, int Y, int Length, Direction Direction)
+{
+    public bool Contains(Ball ball)
+    {
+        return Direction switch
+        {
+            Direction.South => X == ball.X && Y <= ball.Y && Y + Length > ball.Y,
+            Direction.West => Y == ball.Y && X >= ball.X && X - Length < ball.X,
+            Direction.North => X == ball.X && Y >= ball.Y && Y - Length < ball.Y,
+            Direction.East => Y == ball.Y && X <= ball.X && X + Length > ball.X,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+}
+
+static class Exts
+{
+    public static string CharsToString(this IEnumerable<char> chars)
+    {
+        return chars.Aggregate("", (s, c) => s + c);
+    }
+}
