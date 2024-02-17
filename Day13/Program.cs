@@ -1,5 +1,4 @@
-﻿
-var lineClusters = File.ReadAllText("input").Split("\n\n");
+﻿var lineClusters = File.ReadAllText("input").Split("\n\n");
 
 var maps = lineClusters.Select(cluster => new Map(cluster.Split('\n', StringSplitOptions.RemoveEmptyEntries))).ToList();
 
@@ -16,16 +15,28 @@ record Map(string[] Lines)
             for (var i = 0; i < Lines.Length - 1; i++)
             {
                 var valid = true;
+                var singleCharUsed = false;
                 for (var j = 0; j < i + 1 && j + i + 1 < Lines.Length; j++)
                 {
-                    if (Lines[i - j] != Lines[i +1 +j])
+                    var a = Lines[i - j];
+                    var b = Lines[i + 1 + j];
+                    if (a == b) continue;
+                    
+                    if (singleCharUsed)
                     {
                         valid = false;
                         break;
                     }
+                    if (a.OneCharDiffers(b))
+                    {
+                        singleCharUsed = true;
+                        continue;
+                    }
+                    valid = false;
+                    break;
                 }
 
-                if (valid)
+                if (valid && singleCharUsed)
                 {
                     return 100 * (i + 1);
                 }
@@ -35,16 +46,29 @@ record Map(string[] Lines)
             for (var i = 0; i < lineLength - 1; i++)
             {
                 var valid = true;
+                var singleCharUsed = false;
                 for (var j = 0; j < i + 1 && j + i + 1 < lineLength; j++)
                 {
-                    if (!Lines.Select(line => line[i-j]).SequenceEqual(Lines.Select(line => line[i+1+j])))
+                    var a = Lines.Select(line => line[i - j]).CharsToString();
+                    var b = Lines.Select(line => line[i + 1 + j]).CharsToString();
+                    if (a == b) continue;
+                    
+                    if (singleCharUsed)
                     {
                         valid = false;
                         break;
                     }
+                    if (a.OneCharDiffers(b))
+                    {
+                        singleCharUsed = true;
+                        continue;
+                    }
+                    
+                    valid = false;
+                    break;
                 }
 
-                if (valid)
+                if (valid && singleCharUsed)
                 {
                     return i + 1;
                 }
@@ -54,3 +78,26 @@ record Map(string[] Lines)
         }
     }
 };
+
+static class Exts
+{
+    public static string CharsToString(this IEnumerable<char> chars)
+    {
+        return chars.Aggregate("", (s, c) => s + c);
+    }
+
+    public static bool OneCharDiffers(this string a, string b)
+    {
+        var charFound = false;
+        for (var i = 0; i < a.Length; i++)
+        {
+            if (a[i] == b[i]) continue;
+            if (charFound)
+                return false;
+
+            charFound = true;
+        }
+
+        return charFound;
+    }
+}
