@@ -1,5 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-
+﻿
 var lines = File.ReadAllLines("input");
 
 var sizeX = lines[0].Length;
@@ -12,84 +11,102 @@ for (var i = 0; i < sizeY; i++)
 for (var j = 0; j < sizeX; j++)
 {
     map[j, i] = lines[i][j];
-    energized[j, i] = false;
 }
 
-var beams = new List<Beam> { new(new Location(-1, 0), Direction.East) };
-var beamHistory = new HashSet<Beam>(beams);
+var startingBeams = Enumerable.Range(0, sizeX).SelectMany(x => new Beam[]
+        { new(new Location(x, -1), Direction.South), new(new Location(x, sizeY), Direction.North) })
+    .Concat(Enumerable.Range(0, sizeY).SelectMany(y => new Beam[]
+        { new(new Location(-1, y), Direction.East), new(new Location(sizeX, y), Direction.West) }))
+    .ToList();
 
-while (beams.Count > 0)
+var maxResult = 0;
+
+foreach (var startingBeam in startingBeams)
 {
-    var newBeams = new List<Beam>();
-    foreach (var beam in beams)
+    for (var i = 0; i < sizeY; i++)
+    for (var j = 0; j < sizeX; j++)
     {
-        var newBeam = beam.Move();
-        if (newBeam.IsOob(sizeX, sizeY)) continue;
-
-        switch (map.At(newBeam.Location), newBeam.Direction)
-        {
-            case ('.', _):
-            case ('-', Direction.East):
-            case ('-', Direction.West):
-            case ('|', Direction.North):
-            case ('|', Direction.South):
-                newBeams.Add(newBeam);
-                break;
-
-            case ('-', Direction.North):
-            case ('-', Direction.South):
-                newBeams.Add(newBeam with { Direction = Direction.East });
-                newBeams.Add(newBeam with { Direction = Direction.West });
-                break;
-
-            case ('|', Direction.East):
-            case ('|', Direction.West):
-                newBeams.Add(newBeam with { Direction = Direction.North });
-                newBeams.Add(newBeam with { Direction = Direction.South });
-                break;
-
-            case ('\\', Direction.North):
-                newBeams.Add(newBeam with { Direction = Direction.West });
-                break;
-            case ('\\', Direction.East):
-                newBeams.Add(newBeam with { Direction = Direction.South });
-                break;
-            case ('\\', Direction.South):
-                newBeams.Add(newBeam with { Direction = Direction.East });
-                break;
-            case ('\\', Direction.West):
-                newBeams.Add(newBeam with { Direction = Direction.North });
-                break;
-
-            case ('/', Direction.North):
-                newBeams.Add(newBeam with { Direction = Direction.East });
-                break;
-            case ('/', Direction.East):
-                newBeams.Add(newBeam with { Direction = Direction.North });
-                break;
-            case ('/', Direction.South):
-                newBeams.Add(newBeam with { Direction = Direction.West });
-                break;
-            case ('/', Direction.West):
-                newBeams.Add(newBeam with { Direction = Direction.South });
-                break;
-            
-            default:
-                throw new Exception("mannaggia");
-        }
+        energized[j, i] = false;
     }
 
-    newBeams = newBeams.Where(beam => !beamHistory.Contains(beam)).ToList();
-    beamHistory.UnionWith(newBeams);
-    
-    newBeams.ForEach(beam => energized.At(beam.Location) = true);
+    var beams = new List<Beam> { startingBeam };
+    var beamHistory = new HashSet<Beam>(beams);
 
-    beams = newBeams;
+    while (beams.Count > 0)
+    {
+        var newBeams = new List<Beam>();
+        foreach (var beam in beams)
+        {
+            var newBeam = beam.Move();
+            if (newBeam.IsOob(sizeX, sizeY)) continue;
+
+            switch (map.At(newBeam.Location), newBeam.Direction)
+            {
+                case ('.', _):
+                case ('-', Direction.East):
+                case ('-', Direction.West):
+                case ('|', Direction.North):
+                case ('|', Direction.South):
+                    newBeams.Add(newBeam);
+                    break;
+
+                case ('-', Direction.North):
+                case ('-', Direction.South):
+                    newBeams.Add(newBeam with { Direction = Direction.East });
+                    newBeams.Add(newBeam with { Direction = Direction.West });
+                    break;
+
+                case ('|', Direction.East):
+                case ('|', Direction.West):
+                    newBeams.Add(newBeam with { Direction = Direction.North });
+                    newBeams.Add(newBeam with { Direction = Direction.South });
+                    break;
+
+                case ('\\', Direction.North):
+                    newBeams.Add(newBeam with { Direction = Direction.West });
+                    break;
+                case ('\\', Direction.East):
+                    newBeams.Add(newBeam with { Direction = Direction.South });
+                    break;
+                case ('\\', Direction.South):
+                    newBeams.Add(newBeam with { Direction = Direction.East });
+                    break;
+                case ('\\', Direction.West):
+                    newBeams.Add(newBeam with { Direction = Direction.North });
+                    break;
+
+                case ('/', Direction.North):
+                    newBeams.Add(newBeam with { Direction = Direction.East });
+                    break;
+                case ('/', Direction.East):
+                    newBeams.Add(newBeam with { Direction = Direction.North });
+                    break;
+                case ('/', Direction.South):
+                    newBeams.Add(newBeam with { Direction = Direction.West });
+                    break;
+                case ('/', Direction.West):
+                    newBeams.Add(newBeam with { Direction = Direction.South });
+                    break;
+
+                default:
+                    throw new Exception("mannaggia");
+            }
+        }
+
+        newBeams = newBeams.Where(beam => !beamHistory.Contains(beam)).ToList();
+        beamHistory.UnionWith(newBeams);
+
+        newBeams.ForEach(beam => energized.At(beam.Location) = true);
+
+        beams = newBeams;
+    }
+
+    var count = energized.Cast<bool>().Count(b => b);
+    if (count > maxResult)
+        maxResult = count;
 }
 
-var count = energized.Cast<bool>().Count(b => b);
-
-Console.WriteLine(count);
+Console.WriteLine(maxResult);
 
 enum Direction
 {
