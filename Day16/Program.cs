@@ -1,0 +1,144 @@
+﻿
+var lines = File.ReadAllLines("input");
+
+var sizeX = lines[0].Length;
+var sizeY = lines.Length;
+
+var map = new char[sizeX, sizeY];
+var energized = new bool[sizeX, sizeY];
+
+for (var i = 0; i < sizeY; i++)
+for (var j = 0; j < sizeX; j++)
+{
+    map[j, i] = lines[i][j];
+}
+
+var startingBeams = Enumerable.Range(0, sizeX).SelectMany(x => new Beam[]
+        { new(new Location(x, -1), Direction.South), new(new Location(x, sizeY), Direction.North) })
+    .Concat(Enumerable.Range(0, sizeY).SelectMany(y => new Beam[]
+        { new(new Location(-1, y), Direction.East), new(new Location(sizeX, y), Direction.West) }))
+    .ToList();
+
+var maxResult = 0;
+
+foreach (var startingBeam in startingBeams)
+{
+    for (var i = 0; i < sizeY; i++)
+    for (var j = 0; j < sizeX; j++)
+    {
+        energized[j, i] = false;
+    }
+
+    var beams = new List<Beam> { startingBeam };
+    var beamHistory = new HashSet<Beam>(beams);
+
+    while (beams.Count > 0)
+    {
+        var newBeams = new List<Beam>();
+        foreach (var beam in beams)
+        {
+            var newBeam = beam.Move();
+            if (newBeam.IsOob(sizeX, sizeY)) continue;
+
+            switch (map.At(newBeam.Location), newBeam.Direction)
+            {
+                case ('.', _):
+                case ('-', Direction.East):
+                case ('-', Direction.West):
+                case ('|', Direction.North):
+                case ('|', Direction.South):
+                    newBeams.Add(newBeam);
+                    break;
+
+                case ('-', Direction.North):
+                case ('-', Direction.South):
+                    newBeams.Add(newBeam with { Direction = Direction.East });
+                    newBeams.Add(newBeam with { Direction = Direction.West });
+                    break;
+
+                case ('|', Direction.East):
+                case ('|', Direction.West):
+                    newBeams.Add(newBeam with { Direction = Direction.North });
+                    newBeams.Add(newBeam with { Direction = Direction.South });
+                    break;
+
+                case ('\\', Direction.North):
+                    newBeams.Add(newBeam with { Direction = Direction.West });
+                    break;
+                case ('\\', Direction.East):
+                    newBeams.Add(newBeam with { Direction = Direction.South });
+                    break;
+                case ('\\', Direction.South):
+                    newBeams.Add(newBeam with { Direction = Direction.East });
+                    break;
+                case ('\\', Direction.West):
+                    newBeams.Add(newBeam with { Direction = Direction.North });
+                    break;
+
+                case ('/', Direction.North):
+                    newBeams.Add(newBeam with { Direction = Direction.East });
+                    break;
+                case ('/', Direction.East):
+                    newBeams.Add(newBeam with { Direction = Direction.North });
+                    break;
+                case ('/', Direction.South):
+                    newBeams.Add(newBeam with { Direction = Direction.West });
+                    break;
+                case ('/', Direction.West):
+                    newBeams.Add(newBeam with { Direction = Direction.South });
+                    break;
+
+                default:
+                    throw new Exception("mannaggia");
+            }
+        }
+
+        newBeams = newBeams.Where(beam => !beamHistory.Contains(beam)).ToList();
+        beamHistory.UnionWith(newBeams);
+
+        newBeams.ForEach(beam => energized.At(beam.Location) = true);
+
+        beams = newBeams;
+    }
+
+    var count = energized.Cast<bool>().Count(b => b);
+    if (count > maxResult)
+        maxResult = count;
+}
+
+Console.WriteLine(maxResult);
+
+enum Direction
+{
+    North,
+    East,
+    South,
+    West
+}
+
+record Location(int X, int Y)
+{
+    public Location Move(Direction direction) =>
+        direction switch
+        {
+            Direction.North => this with { Y = Y - 1 },
+            Direction.East => this with { X = X + 1 },
+            Direction.South => this with { Y = Y + 1 },
+            Direction.West => this with { X = X - 1 },
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
+        };
+
+    public bool IsOob(int maxX, int maxY) => X < 0 || Y < 0 || X >= maxX || Y >= maxY;
+}
+
+record Beam(Location Location, Direction Direction)
+{
+    public Beam Move() => this with { Location = Location.Move(Direction) };
+
+    public bool IsOob(int maxX, int maxY) => Location.IsOob(maxX, maxY);
+}
+
+static class Exts
+{
+    public static ref T At<T>(this T[,] source, Location location) => ref source[location.X, location.Y];
+}
