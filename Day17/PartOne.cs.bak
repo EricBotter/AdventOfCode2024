@@ -1,4 +1,4 @@
-﻿#define DEBUG_PRINT
+﻿// #define DEBUG_PRINT
 
 using CrucibleFootprint = (Location location, Direction last, int count);
 
@@ -39,11 +39,14 @@ while (activeCrucibles.Count > 0)
         {
             if (direction == crucible.LastDirection.Opposite())
                 continue;
-            if (crucible.LastDirectionCount == 7 && crucible.LastDirection == direction)
+            if (crucible.LastDirectionCount == 3 && crucible.LastDirection == direction)
                 continue;
 
-            if (crucible.TryMove(direction, map, out var newCrucible)) 
-                newCrucibles.Add(newCrucible);
+            var newCrucible = crucible.MoveWithoutChangingHeatLoss(direction);
+            if (newCrucible.IsOob(sizeX, sizeY))
+                continue;
+
+            newCrucibles.Add(newCrucible with { HeatLoss = newCrucible.HeatLoss + map.At(newCrucible.Location) });
         }
     }
 
@@ -54,8 +57,12 @@ while (activeCrucibles.Count > 0)
     {
         if (heatLoss.At(newCrucible.Location) > newCrucible.HeatLoss)
             heatLoss.At(newCrucible.Location) = newCrucible.HeatLoss;
-        var value = crucibleHistory.GetValueOrDefault(newCrucible.Footprint, int.MaxValue);
-        if (value > newCrucible.HeatLoss)
+        if (crucibleHistory.TryGetValue(newCrucible.Footprint, out var value))
+        {
+            if (value > newCrucible.HeatLoss)
+                crucibleHistory[newCrucible.Footprint] = newCrucible.HeatLoss;
+        }
+        else
             crucibleHistory[newCrucible.Footprint] = newCrucible.HeatLoss;
     }
 
@@ -75,11 +82,11 @@ while (activeCrucibles.Count > 0)
             ? $"[{DateTime.Now:O}]:     heatLoss cells not discovered: {heatLoss.Cast<int>().Count(c => c == int.MaxValue)}"
             : $"[{DateTime.Now:O}]:     Corner value: {heatLoss[sizeX - 1, sizeY - 1]}");
     
-    // for (var i = 0; i < sizeY; i++)
+    // for (var i = 0; i < sizeX; i++)
     // {
-    //     for (var j = 0; j < sizeX; j++)
+    //     for (var j = 0; j < sizeY; j++)
     //     {
-    //         Console.Write($"{heatLoss[j, i].ToString(),10}[{map[j, i]}] ");
+    //         Console.Write($"{heatLoss[i, j].ToString(),10}[{map[i, j]}] ");
     //     }
     //
     //     Console.WriteLine();
@@ -104,13 +111,13 @@ enum Direction
 
 record Location(int X, int Y)
 {
-    public Location Move(Direction direction, int count) =>
+    public Location Move(Direction direction) =>
         direction switch
         {
-            Direction.North => this with { Y = Y - count },
-            Direction.East => this with { X = X + count },
-            Direction.South => this with { Y = Y + count },
-            Direction.West => this with { X = X - count },
+            Direction.North => this with { Y = Y - 1 },
+            Direction.East => this with { X = X + 1 },
+            Direction.South => this with { Y = Y + 1 },
+            Direction.West => this with { X = X - 1 },
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
         };
 
@@ -123,26 +130,10 @@ record Crucible(
     Direction LastDirection,
     int LastDirectionCount)
 {
-    public bool TryMove(Direction direction, byte[,] heatMap, out Crucible newCrucible)
+    public Crucible MoveWithoutChangingHeatLoss(Direction direction)
     {
-        var sameDirection = direction == LastDirection && LastDirectionCount > 0;
-
-        var newLocation = Location.Move(direction, sameDirection ? 1 : 4);
-        if (newLocation.IsOob(heatMap.GetLength(0), heatMap.GetLength(1)))
-        {
-            newCrucible = this;
-            return false;
-        }
-
-        var heatIncrease = heatMap.At(newLocation) +
-                          (sameDirection
-                              ? 0
-                              : heatMap.At(Location.Move(direction, 1)) + heatMap.At(Location.Move(direction, 2)) +
-                                heatMap.At(Location.Move(direction, 3)));
-
-        newCrucible = new Crucible(HeatLoss + heatIncrease, newLocation, direction,
-            sameDirection ? LastDirectionCount + 1 : 1);
-        return true;
+        return new Crucible(HeatLoss, Location.Move(direction), direction,
+            direction == LastDirection ? LastDirectionCount + 1 : 1);
     }
 
     public bool IsOob(int maxX, int maxY) => Location.IsOob(maxX, maxY);
