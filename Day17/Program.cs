@@ -1,4 +1,4 @@
-﻿#define DEBUG_PRINT
+﻿// #define DEBUG_PRINT
 
 using CrucibleFootprint = (Location location, Direction last, int count);
 
@@ -22,14 +22,16 @@ for (var j = 0; j < sizeX; j++)
     heatLoss[j, i] = int.MaxValue;
 }
 
-var startingCrucible = new Crucible(0, new Location(0, 0), Direction.South, 0, []);
+var startingCrucible = new Crucible(0, new Location(0, 0), Direction.South, 0);
 var activeCrucibles = new List<Crucible> { startingCrucible };
 
 heatLoss[0, 0] = 0;
 
 while (activeCrucibles.Count > 0)
 {
+#if DEBUG_PRINT
     Console.WriteLine($"[{DateTime.Now:O}]: Moving crucibles...");
+#endif
     var newCrucibles = new List<Crucible>();
     foreach (var crucible in activeCrucibles)
     {
@@ -41,14 +43,16 @@ while (activeCrucibles.Count > 0)
                 continue;
 
             var newCrucible = crucible.MoveWithoutChangingHeatLoss(direction);
-            if (newCrucible.IsOob(sizeX, sizeY) || newCrucible.LocationHistory.Contains(newCrucible.Location))
+            if (newCrucible.IsOob(sizeX, sizeY))
                 continue;
 
             newCrucibles.Add(newCrucible with { HeatLoss = newCrucible.HeatLoss + map.At(newCrucible.Location) });
         }
     }
 
+#if DEBUG_PRINT
     Console.WriteLine($"[{DateTime.Now:O}]: Updating heatmap...");
+#endif
     foreach (var newCrucible in newCrucibles)
     {
         if (heatLoss.At(newCrucible.Location) > newCrucible.HeatLoss)
@@ -62,10 +66,14 @@ while (activeCrucibles.Count > 0)
             crucibleHistory[newCrucible.Footprint] = newCrucible.HeatLoss;
     }
 
+#if DEBUG_PRINT
     Console.WriteLine($"[{DateTime.Now:O}]: Filtering crucibles...");
+#endif
     activeCrucibles = newCrucibles.Where(crucible => crucibleHistory[crucible.Footprint] == crucible.HeatLoss)
+        .Distinct()
         .ToList();
     
+#if DEBUG_PRINT
     Console.WriteLine($"[{DateTime.Now:O}]: Complete!");
     Console.WriteLine($"[{DateTime.Now:O}]:     Active crucibles: {activeCrucibles.Count}");
     Console.WriteLine($"[{DateTime.Now:O}]:     Dictionary key count: {crucibleHistory.Keys.Count}");
@@ -74,7 +82,6 @@ while (activeCrucibles.Count > 0)
             ? $"[{DateTime.Now:O}]:     heatLoss cells not discovered: {heatLoss.Cast<int>().Count(c => c == int.MaxValue)}"
             : $"[{DateTime.Now:O}]:     Corner value: {heatLoss[sizeX - 1, sizeY - 1]}");
     
-#if DEBUG_PRINT
     // for (var i = 0; i < sizeX; i++)
     // {
     //     for (var j = 0; j < sizeY; j++)
@@ -121,13 +128,12 @@ record Crucible(
     int HeatLoss,
     Location Location,
     Direction LastDirection,
-    int LastDirectionCount,
-    List<Location> LocationHistory)
+    int LastDirectionCount)
 {
     public Crucible MoveWithoutChangingHeatLoss(Direction direction)
     {
         return new Crucible(HeatLoss, Location.Move(direction), direction,
-            direction == LastDirection ? LastDirectionCount + 1 : 1, LocationHistory.Append(Location).ToList());
+            direction == LastDirection ? LastDirectionCount + 1 : 1);
     }
 
     public bool IsOob(int maxX, int maxY) => Location.IsOob(maxX, maxY);
