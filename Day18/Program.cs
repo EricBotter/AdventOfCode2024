@@ -4,154 +4,19 @@
 
 var inputs = File.ReadAllLines("input").Select(line => new Input(line)).ToList();
 
-int maxX = 0, maxY = 0, minX = 0, minY = 0;
-
 var point = new Location(0, 0);
+var area = 0L;
+
 foreach (var input in inputs)
 {
-    point = point.Move(input.Direction, input.Length);
-    maxX = int.Max(maxX, point.X);
-    minX = int.Min(minX, point.X);
-    maxY = int.Max(maxY, point.Y);
-    minY = int.Min(minY, point.Y);
+    var newPoint = point.Move(input.Direction, input.Length);
+    var currentArea = point * newPoint;
+    area += currentArea;
+    Console.WriteLine($"{input,45}, {point,10} -> {newPoint},    Added: {currentArea,3}, Total: {area,3}");
+    point = newPoint;
 }
 
-var sizeX = maxX - minX + 1;
-var sizeY = maxY - minY + 1;
-
-var startingPoint = new Location(-minX, -minY);
-var map = new char[sizeX, sizeY];
-
-for (var i = 0; i < sizeX; i++)
-for (var j = 0; j < sizeY; j++)
-    map[i, j] = '.';
-
-var currentLocation = startingPoint;
-
-var firstCharToSet = inputs[0].Direction switch
-{
-    Direction.North or Direction.South => '|',
-    Direction.East or Direction.West => '-',
-    _ => throw new ArgumentOutOfRangeException()
-};
-
-foreach (var location in currentLocation.StepsTowards(inputs[0].Direction, inputs[0].Length))
-    map.At(location) = firstCharToSet;
-
-currentLocation = currentLocation.Move(inputs[0].Direction, inputs[0].Length);
-var lastDirection = inputs[0].Direction;
-
-foreach (var input in inputs.Skip(1))
-{
-    map.At(currentLocation) = (lastDirection, input.Direction) switch
-    {
-        (Direction.North, Direction.East) => 'F',
-        (Direction.South, Direction.East) => 'L',
-        (Direction.North, Direction.West) => '7',
-        (Direction.South, Direction.West) => 'J',
-        (Direction.East, Direction.North) => 'J',
-        (Direction.West, Direction.North) => 'L',
-        (Direction.East, Direction.South) => '7',
-        (Direction.West, Direction.South) => 'F',
-        _ => throw new Exception("momento Hoobastank: Same Direction")
-    };
-
-    var charToSet = input.Direction switch
-    {
-        Direction.North or Direction.South => '|',
-        Direction.East or Direction.West => '-',
-        _ => throw new ArgumentOutOfRangeException()
-    };
-
-    foreach (var location in currentLocation.StepsTowards(input.Direction, input.Length))
-    {
-        map.At(location) = charToSet;
-    }
-
-    currentLocation = currentLocation.Move(lastDirection = input.Direction, input.Length);
-}
-
-map.At(currentLocation) = (lastDirection, inputs[0].Direction) switch
-{
-    (Direction.North, Direction.East) => 'F',
-    (Direction.South, Direction.East) => 'L',
-    (Direction.North, Direction.West) => 'J',
-    (Direction.South, Direction.West) => '7',
-    (Direction.East, Direction.North) => 'J',
-    (Direction.West, Direction.North) => 'L',
-    (Direction.East, Direction.South) => '7',
-    (Direction.West, Direction.South) => 'F',
-    _ => throw new Exception("momento Hoobastank: Same Direction")
-};
-
-
-#region adapted copy-paste from Day 10
-
-var output = 0;
-for (var i = 0; i < map.GetLength(1); i++)
-{
-    var inLoop = LoopBuildingState.OutOfLoop;
-    for (var j = 0; j < map.GetLength(0); j++)
-    {
-        switch (map[j, i], inLoop)
-        {
-            case ('|', LoopBuildingState.OutOfLoop):
-                inLoop = LoopBuildingState.InLoop;
-                break;
-            case ('|', LoopBuildingState.InLoop):
-                inLoop = LoopBuildingState.OutOfLoop;
-                break;
-
-            case ('F', LoopBuildingState.OutOfLoop):
-                inLoop = LoopBuildingState.LoopBelow;
-                break;
-            case ('7', LoopBuildingState.LoopBelow):
-                inLoop = LoopBuildingState.OutOfLoop;
-                break;
-            case ('J', LoopBuildingState.LoopBelow):
-                inLoop = LoopBuildingState.InLoop;
-                break;
-
-            case ('L', LoopBuildingState.OutOfLoop):
-                inLoop = LoopBuildingState.LoopAbove;
-                break;
-            case ('7', LoopBuildingState.LoopAbove):
-                inLoop = LoopBuildingState.InLoop;
-                break;
-            case ('J', LoopBuildingState.LoopAbove):
-                inLoop = LoopBuildingState.OutOfLoop;
-                break;
-
-            case ('F', LoopBuildingState.InLoop):
-                inLoop = LoopBuildingState.LoopAbove;
-                break;
-            case ('L', LoopBuildingState.InLoop):
-                inLoop = LoopBuildingState.LoopBelow;
-                break;
-
-            case ('-', LoopBuildingState.LoopAbove):
-            case ('-', LoopBuildingState.LoopBelow):
-                break;
-            
-            case ('.', LoopBuildingState.InLoop):
-            case ('.', LoopBuildingState.OutOfLoop):
-                break;
-
-            default:
-                throw new Exception("map is borked");
-        }
-
-        if (inLoop != LoopBuildingState.OutOfLoop || map[j, i] != '.')
-        {
-            map[j, i] = 'X';
-            output += 1;
-        }
-    }
-}
-
-#endregion adapted copy-paste from Day 10
-
-Console.WriteLine(output);
+Console.WriteLine(area);
 
 record Input(Direction Direction, int Length)
 {
@@ -186,17 +51,19 @@ record Location(int X, int Y)
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
         };
 
-    public IEnumerable<Location> StepsTowards(Direction direction, int count)
+    public static long operator *(Location a, Location b)
     {
-        var current = this;
-        for (var i = 0; i < count; i++)
+        var diffX = a.X - b.X;
+        var fullCellAdj = diffX switch
         {
-            current = current.Move(direction, 1);
-            yield return current;
-        }
+            < 0 => -1,
+            0 => 0,
+            > 0 => 1
+        };
+        return a.Y * (diffX + fullCellAdj);
     }
 
-    public bool IsOob(int maxX, int maxY) => X < 0 || Y < 0 || X >= maxX || Y >= maxY;
+    public override string ToString() => $"({X}, {Y})";
 }
 
 static class Exts
