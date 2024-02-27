@@ -18,30 +18,29 @@ while (lines[i].Length > 0)
 
 i++;
 
-while (i < lines.Length)
-{
-    parts.Add(Part.FromString(lines[i]));
-    i++;
-}
+var output = 0L;
 
-var output = 0;
-foreach (var part in parts)
+var partQueue = new Queue<Part>();
+partQueue.Enqueue(new Part(new Range(1, 4000), new Range(1, 4000), new Range(1, 4000), new Range(1, 4000), "in"));
+
+while(partQueue.TryDequeue(out var part))
 {
     Console.WriteLine($"Current part: {part}");
-    var currentWorkflow = workflowDict["in"];
-    var destination = currentWorkflow.DestinationFor(part);
-    Console.WriteLine($"    {currentWorkflow} sent part to {destination}");
-    while (destination != "A" && destination != "R")
+    var currentWorkflow = workflowDict[part.CurrentWorkflow];
+    
+    Console.WriteLine($"  Applying {currentWorkflow}");
+    var newParts = currentWorkflow.ApplyTo(part);
+    
+    foreach (var newPart in newParts)
     {
-        currentWorkflow = workflowDict[destination];
-        destination = currentWorkflow.DestinationFor(part);
-        Console.WriteLine($"    {currentWorkflow} sent part to {destination}");
-    }
-
-    if (destination == "A")
-    {
-        Console.WriteLine($"  Part is rated {part.X + part.M + part.A + part.S}");
-        output += part.X + part.M + part.A + part.S;
+        Console.WriteLine($"    Workflow yielded {newPart}");
+        if (newPart.CurrentWorkflow == "A")
+        {
+            output += newPart.Count;
+            Console.WriteLine($" Added {newPart.Count} to global sum, it is now {output}");
+        }
+        else if (newPart.CurrentWorkflow != "R")
+            partQueue.Enqueue(newPart);
     }
 }
 
@@ -61,7 +60,7 @@ record Rule(string Field, Operator Op, int Value, string Destination)
 
     public bool Match(Part part)
     {
-        var valueToCheck = Field switch
+        var rangeToCheck = Field switch
         {
             "x" => part.X,
             "m" => part.M,
@@ -70,13 +69,15 @@ record Rule(string Field, Operator Op, int Value, string Destination)
             _ => throw new Exception("mannaggia")
         };
 
-        return Op switch
+        return Op switch // 0-100 < 90 => 0-89, 90-100 || 0-100 > 90 => 0-90, 91-100 || 0-100 < 100 => 0-99, 100-100
         {
-            Operator.LessThan => valueToCheck < Value,
-            Operator.GreaterThan => valueToCheck > Value,
+            Operator.LessThan => rangeToCheck.Min < Value && rangeToCheck.Max >= Value,
+            Operator.GreaterThan => rangeToCheck.Min <= Value && rangeToCheck.Max > Value,
             _ => throw new Exception("mannaggia2")
         };
     }
+
+    public override string ToString() => $"Rule {{ {Field} {(Op == Operator.LessThan ? '<' : '>')} {Value} => {Destination} }}";
 }
 
 record Workflow(string Name, List<Rule> Rules, string DefaultDestination)
@@ -94,33 +95,66 @@ record Workflow(string Name, List<Rule> Rules, string DefaultDestination)
         return new Workflow(match.Groups["name"].Value, rules, match.Groups["destination"].Value);
     }
 
-    public string DestinationFor(Part part)
+    public IEnumerable<Part> ApplyTo(Part part)
     {
+        var remainingPart = part;
         foreach (var rule in Rules)
         {
             Console.WriteLine($"        Evaluating {rule}");
             if (rule.Match(part))
             {
-                return rule.Destination;
+                var takeLeft = rule.Op == Operator.LessThan;
+                switch (rule.Field)
+                {
+                    case "x":
+                        var (leftX, rightX) = part.X.SplitAt(takeLeft ? rule.Value : rule.Value + 1);
+                        yield return remainingPart with { X = takeLeft ? leftX : rightX, CurrentWorkflow = rule.Destination};
+                        remainingPart = remainingPart with { X = takeLeft ? rightX : leftX };
+                        break;
+                    case "m":
+                        var (leftM, rightM) = part.M.SplitAt(takeLeft ? rule.Value : rule.Value + 1);
+                        yield return remainingPart with { M = takeLeft ? leftM : rightM, CurrentWorkflow = rule.Destination};
+                        remainingPart = remainingPart with { M = takeLeft ? rightM : leftM };
+                        break;
+                    case "a":
+                        var (leftA, rightA) = part.A.SplitAt(takeLeft ? rule.Value : rule.Value + 1);
+                        yield return remainingPart with { A = takeLeft ? leftA : rightA, CurrentWorkflow = rule.Destination};
+                        remainingPart = remainingPart with { A = takeLeft ? rightA : leftA };
+                        break;
+                    case "s":
+                        var (leftS, rightS) = part.S.SplitAt(takeLeft ? rule.Value : rule.Value + 1);
+                        yield return remainingPart with { S = takeLeft ? leftS : rightS, CurrentWorkflow = rule.Destination};
+                        remainingPart = remainingPart with { S = takeLeft ? rightS : leftS };
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(rule.Field));
+                }
             }
         }
 
-        return DefaultDestination;
+        yield return remainingPart with {CurrentWorkflow = DefaultDestination};
     }
+
+    public override string ToString() => $"Workflow {{ [{Name}], {Rules.Count} Rules, Default => [{DefaultDestination}] }}";
 }
 
-record Part(int X, int M, int A, int S)
+record Part(Range X, Range M, Range A, Range S, string CurrentWorkflow)
 {
-    public static Part FromString(string line)
+    public long Count => X.Count * M.Count * A.Count * S.Count;
+}
+
+record Range(int Min, int Max)
+{
+    public (Range left, Range right) SplitAt(int value)
     {
-        var matches = Program.NumberRegex.Matches(line);
-        return new Part(
-            int.Parse(matches[0].Value),
-            int.Parse(matches[1].Value),
-            int.Parse(matches[2].Value),
-            int.Parse(matches[3].Value)
-        );
+        if (value <= Min || value >= Max)
+            throw new ArgumentOutOfRangeException(nameof(value)); 
+        return ( this with { Max = value - 1 }, this with { Min = value });
     }
+
+    public long Count => Max - Min + 1;
+
+    public override string ToString() => $"({Min}-{Max})";
 }
 
 enum Operator
