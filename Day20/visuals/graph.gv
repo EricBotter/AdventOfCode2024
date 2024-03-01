@@ -1,0 +1,172 @@
+
+digraph {
+
+ls[shape=rect]
+px[shape=diamond]
+jk[shape=diamond]
+hd[shape=diamond]
+pk[shape=diamond]
+bj[shape=diamond]
+vg[shape=diamond]
+cj[shape=diamond]
+sk[shape=diamond]
+fl[shape=diamond]
+th[shape=diamond]
+pr[shape=diamond]
+xv[shape=diamond]
+mh[shape=diamond]
+jh[shape=diamond]
+jz[shape=diamond]
+hr[shape=diamond]
+kx[shape=diamond]
+ql[shape=diamond]
+gm[shape=diamond]
+hz[shape=diamond]
+dt[shape=diamond]
+gg[shape=diamond]
+xl[shape=diamond]
+pq[shape=rect]
+jx[shape=diamond]
+kr[shape=diamond]
+bn[shape=diamond]
+fs[shape=rect]
+vn[shape=diamond]
+jt[shape=diamond]
+fx[shape=diamond]
+rt[shape=diamond]
+gk[shape=diamond]
+mv[shape=diamond]
+bz[shape=diamond]
+dv[shape=diamond]
+rg[shape=diamond]
+pj[shape=diamond]
+kz[shape=diamond]
+ck[shape=diamond]
+fg[shape=rect]
+sf[shape=rect]
+jb[shape=diamond]
+nk[shape=diamond]
+dk[shape=rect]
+hp[shape=diamond]
+tx[shape=rect]
+nv[shape=diamond]
+fh[shape=diamond]
+xt[shape=diamond]
+hg[shape=diamond]
+zb[shape=diamond]
+fm[shape=rect]
+pm[shape=diamond]
+fv[shape=diamond]
+vr[shape=rect]
+
+ls -> fg
+ls -> hz
+ls -> fl
+ls -> sk
+ls -> fv
+ls -> ck
+px -> ls
+px -> dv
+jk -> xt
+jk -> tx
+hd -> fs
+hd -> vn
+pk -> ql
+bj -> tx
+bj -> pr
+vg -> xl
+vg -> sf
+cj -> bj
+sk -> bz
+fl -> fx
+th -> fl
+th -> ls
+pr -> gm
+xv -> sf
+xv -> hp
+mh -> jb
+jh -> kx
+jh -> tx
+jz -> pm
+jz -> fs
+hr -> tx
+hr -> gk
+kx -> cj
+ql -> jx
+gm -> tx
+gm -> jt
+hz -> ls
+hz -> fv
+dt -> fs
+gg -> sf
+gg -> vg
+xl -> fh
+pq -> vr
+jx -> mv
+kr -> gg
+bn -> px
+bn -> ls
+fs -> pm
+fs -> jb
+fs -> mh
+fs -> nk
+fs -> pj
+fs -> pq
+fs -> rg
+vn -> rt
+vn -> fs
+jt -> tx
+jt -> zb
+broadcaster -> hz
+broadcaster -> nv
+broadcaster -> nk
+broadcaster -> hr
+fx -> sk
+fx -> ls
+rt -> fs
+rt -> kz
+gk -> tx
+gk -> jh
+mv -> sf
+mv -> kr
+bz -> bn
+kz -> ls
+dv -> ls
+rg -> jz
+pj -> mh
+kz -> dt
+sf -> fs
+ck -> hg
+fg -> vr
+sf -> pk
+sf -> dk
+sf -> ql
+sf -> xl
+sf -> kr
+sf -> nv
+sf -> jx
+jb -> rg
+nk -> fs
+nk -> pj
+dk -> vr
+hp -> sf
+tx -> hr
+tx -> pr
+tx -> cj
+tx -> kx
+tx -> fm
+nv -> pk
+nv -> sf
+fh -> xv
+fh -> sf
+xt -> tx
+hg -> ls
+hg -> th
+zb -> tx
+zb -> jk
+fm -> vr
+pm -> hd
+fv -> ck
+vr -> rx
+
+}

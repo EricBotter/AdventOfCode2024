@@ -48,3 +48,10 @@ internal class Conjunction(string name, IEnumerable<string> destinations, IEnume
         return _destinations.Select(d => new Pulse(Name, !allInputsHigh, d));
     }
 }
+
+internal class Destination : Processor
+{
+    public override string Name => "rx";
+
+    public override IEnumerable<Pulse> Process(Pulse pulse) => Enumerable.Empty<Pulse>();
+}

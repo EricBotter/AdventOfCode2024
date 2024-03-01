@@ -21,6 +21,8 @@ foreach (var line in lines)
     parsedLines[source] = destinations;
 }
 
+processors["rx"] = new Destination();
+
 foreach (var source in parsedLines.Keys)
 {
     switch (source[0])
@@ -44,12 +46,11 @@ foreach (var source in parsedLines.Keys)
     }
 }
 
-long lowPulseCount = 0, highPulseCount = 0;
-
-for (var i = 0; i < 1000; i++)
+for (var i = 0;; i++)
 {
-    Console.WriteLine($"Run # {i}");
-    
+    if (i % 10000 == 0) 
+        Console.WriteLine($"Run # {i}");
+
     var pulseQueue = new Queue<Pulse>();
     pulseQueue.Enqueue(new Pulse("", false, "broadcaster"));
 
@@ -57,15 +58,14 @@ for (var i = 0; i < 1000; i++)
     {
         // Console.WriteLine($"  Processing {pulse}");
 
-        if (pulse.High)
-            highPulseCount++;
-        else
-            lowPulseCount++;
+        if (pulse is { High: false, Source: "rx" })
+        {
+            Console.WriteLine($"Completed! Button press: {i}");
+            throw new Exception();
+        }
 
         if (processors.TryGetValue(pulse.Destination, out var value))
             foreach (var newPulse in value.Process(pulse))
                 pulseQueue.Enqueue(newPulse);
     }
 }
-
-Console.WriteLine(lowPulseCount * highPulseCount);
